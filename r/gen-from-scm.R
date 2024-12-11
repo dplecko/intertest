@@ -12,6 +12,8 @@ gen_from_scm <- function(sclass, n, X_to_W = "random", X_to_Y = "random") {
     }
   }
   
+  prob_y <- NULL
+  
   if (sclass == "A") {
     # SCM Class A:
     Z <- matrix(rnorm(n * 3), n, 3)
@@ -210,21 +212,132 @@ gen_from_scm <- function(sclass, n, X_to_W = "random", X_to_Y = "random") {
       data.frame(measure = "IE x SE", gt = FALSE),
       data.frame(measure = "DE x IE x SE", gt = TRUE)
     )
+  } else if (sclass == "H") { # Z empty
+    
+    Z <- NULL
+    # Generate the real X
+    X <- rbinom(n, size = 1, prob = 0.5)
+    
+    # Generate X -> W
+    X_W <- if (X_to_W == "random") X else X_W <- gen_X(Z, X_to_W)
+    
+    # Generate X -> Y
+    X_Y <- if (X_to_Y == "random") X else X_Y <- gen_X(Z, X_to_Y)
+    
+    # W: 3-dimensional, quadratic relationship with Z and X_W
+    W <- matrix(c((Z[,1]^2) * 0.3, Z[,2] * 0.5, X_W * 0.4), n, 3) + 
+      matrix(rnorm(n * 3), n, 3)
+    
+    # Y: includes interaction between X_Y, Z, and W
+    Y <- W %*% c(0.4, 0.3, 0.2) +
+      X_Y * W[,3] * 0.5 + W[,3] * (-0.4) + 
+      X_Y * W[, 2]^2 + rnorm(n)
+    
+    gt <- rbind(
+      data.frame(measure = "TE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE", gt = TRUE),
+      data.frame(measure = "DE x SE", gt = FALSE),
+      data.frame(measure = "IE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE x SE", gt = FALSE)
+    )
+  } else if (sclass == "I") { # W empty
+    
+    Z <- matrix(rnorm(n * 3), n, 3)
+    
+    # Generate the real X
+    X <- gen_X(Z, "random")
+    
+    # Generate X -> Y
+    X_Y <- if (X_to_Y == "random") X else X_Y <- gen_X(Z, X_to_Y)
+    
+    # Generate W as null
+    W <- NULL
+    
+    # Y: includes interaction between X_Y, Z, and W
+    Y <- Z %*% c(0.2, 0.1, 0.3) + 
+      X_Y * Z[,1] * 0.5 + Z[,2] * (-0.4) + 
+      X_Y * Z[, 3]^2 + rnorm(n)
+    
+    gt <- rbind(
+      data.frame(measure = "TE x SE", gt = TRUE),
+      data.frame(measure = "DE x IE", gt = FALSE),
+      data.frame(measure = "DE x SE", gt = TRUE),
+      data.frame(measure = "IE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE x SE", gt = FALSE)
+    )
+  } else if (sclass == "J") { # Z empty, Y binary
+    
+    # Generate Z as null
+    Z <- NULL
+    
+    # Generate the real X
+    X <- rbinom(n, 1, 0.5)
+    
+    # Generate X -> W
+    X_W <- if (X_to_W == "random") X else gen_X(Z, X_to_W)
+    
+    # Generate X -> Y
+    X_Y <- if (X_to_Y == "random") X else gen_X(Z, X_to_Y)
+    
+    # W: linear relationship with Z and X_W
+    W <- X_W * matrix(c(0.4, 0.3, 0.5), n, 3, byrow = TRUE) + 
+      matrix(rnorm(n * 3), n, 3)
+    
+    # Y: logistic outcome influenced by W, Z, X_Y
+    logit_Y <- W %*% c(0.3, 0.4, 0.2) + W[, 1]^2 * X_Y + X_Y * 0.6
+    prob_y <- plogis(logit_Y)
+    Y <- rbinom(n, 1, prob = prob_y)
+    
+    gt <- rbind(
+      data.frame(measure = "TE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE", gt = TRUE),
+      data.frame(measure = "DE x SE", gt = FALSE),
+      data.frame(measure = "IE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE x SE", gt = FALSE)
+    )
+  } else if (sclass == "K") {
+    
+    Z <- matrix(rnorm(n * 3), n, 3)
+    
+    # Generate the real X
+    X <- gen_X(Z, "random")
+    
+    # Generate X -> Y
+    X_Y <- if (X_to_Y == "random") X else gen_X(Z, X_to_Y)
+    
+    # Generate W as null
+    W <- NULL
+    
+    # Y: logistic outcome influenced by W, Z, X_Y
+    logit_Y <- Z %*% c(0.1, 0.3, 0.2) + Z[, 2]^2 * X_Y + X_Y * 0.6
+    prob_y <- plogis(logit_Y)
+    Y <- rbinom(n, 1, prob = prob_y)
+    
+    gt <- rbind(
+      data.frame(measure = "TE x SE", gt = TRUE),
+      data.frame(measure = "DE x IE", gt = FALSE),
+      data.frame(measure = "DE x SE", gt = TRUE),
+      data.frame(measure = "IE x SE", gt = FALSE),
+      data.frame(measure = "DE x IE x SE", gt = FALSE)
+    )
   }
   
-  # Create a data frame with the variables
-  data <- data.frame(X = X, Z1 = Z[,1], Z2 = Z[,2], Z3 = Z[,3], 
-                     W1 = W[,1], W2 = W[,2], W3 = W[,3], Y = Y)
+  col_nms <- function(lab, A) 
+    if (is.null(A)) return(NULL) else paste0(lab, seq_len(ncol(A)))
+  
+  nms <- c("X", col_nms("Z", Z), col_nms("W", W), "Y")
+  
+  data <- as.data.frame(cbind(X, Z, W, Y))
+  names(data) <- nms
   
   # Return data, mapping of variables, and ground truth
   ret <- list(
     data = data, 
-    mapping = list(X = "X", Z = c("Z1", "Z2", "Z3"), W = c("W1", "W2", "W3"), 
-                   Y = "Y"), 
+    mapping = list(X = "X", Z = col_nms("Z", Z), W = col_nms("W", W), Y = "Y"), 
     gt = gt
   )
   
-  if (exists("prob_y")) ret$prob_y <- prob_y
+  if (!is.null(prob_y)) ret$prob_y <- prob_y
   return(ret)
 }
 
@@ -232,8 +345,9 @@ compute_PO <- function(sclass, xz, xw, xy, n = 10^5, log_risk = FALSE) {
   
   gen <- gen_from_scm(sclass, n, X_to_W = xw, X_to_Y = xy)
   dat <- gen$data
-  if (is.element(sclass, c("F", "G"))) dat$Y <- gen$prob_y
+  if (is.element(sclass, c("F", "G", "J", "K"))) dat$Y <- gen$prob_y
   if (log_risk) dat$Y <- log(dat$Y)
+  if (is.element(sclass, c("H", "J"))) xz <- c(0, 1) # Z empty case
   mean(dat[dat$X %in% xz,]$Y)
 }
 
@@ -241,44 +355,9 @@ ia_gt <- function(sclass, n = 10^5, log_risk = FALSE) {
   
   scale <- if (log_risk) "log-risk" else "difference"
   
-  measures <- list(
-    tese = list(
-      sgn = c(1, -1, -1, 1),
-      spc = list(
-        c(0, 1, 1), c(0, 0, 0), c(1, 1, 1), c(1, 0, 0)
-      ),
-      ia = "TE x SE"
-    ),
-    deie0 = list(
-      sgn = c(1, -1, -1, 1),
-      spc = list(
-        c(0, 0, 1), c(0, 0, 0), c(0, 1, 1), c(0, 1, 0)
-      ),
-      ia = "DE x IE"
-    ),
-    dese = list(
-      sgn = c(1, -1, -1, 1),
-      spc = list(
-        c(0, 0, 1), c(0, 0, 0), c(1, 0, 1), c(1, 0, 0)
-      ),
-      ia = "DE x SE"
-    ),
-    iese = list(
-      sgn = c(1, -1, -1, 1),
-      spc = list(
-        c(0, 1, 0), c(0, 0, 0), c(1, 1, 0), c(1, 0, 0)
-      ),
-      ia = "IE x SE"
-    ),
-    deiese = list(
-      sgn = c(c(1, -1, -1, 1), -c(1, -1, -1, 1)),
-      spc = list(
-        c(0, 0, 1), c(0, 0, 0), c(0, 1, 1), c(0, 1, 0),
-        c(1, 0, 1), c(1, 0, 0), c(1, 1, 1), c(1, 1, 0)
-      ),
-      ia = "DE x IE x SE"
-    )
-  )
+  se_meas <- c("ctfse", "TE x SE", "DE x SE", "IE x SE", "DE x IE x SE")
+  ie_meas <- c("ctfie", "DE x IE", "IE x SE", "DE x IE x SE")
+  measures <- measure_spec()
   
   res <- NULL
   for (i in seq_along(measures)) {
@@ -295,6 +374,11 @@ ia_gt <- function(sclass, n = 10^5, log_risk = FALSE) {
       # update log-scale \psi
       psi_osd <- psi_osd + measures[[i]]$sgn[j] * psi_i
     }
+    
+    if (is.element(sclass, c("H", "J")) & is.element(measures[[i]]$ia, se_meas)) 
+        psi_osd <- 0
+    if (is.element(sclass, c("I", "K")) & is.element(measures[[i]]$ia, ie_meas)) 
+        psi_osd <- 0
     
     res <- rbind(
       res,
