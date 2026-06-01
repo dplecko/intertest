@@ -1,0 +1,13 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^dev$
+^scripts$
+^results$
+^config$
+^data$
+^README\.html$
+^\.claude$
+^\.gitignore$
+^\.DS_Store$
+^\.Rhistory$
+^LICENSE\.md$

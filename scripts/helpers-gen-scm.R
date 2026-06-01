@@ -357,7 +357,7 @@ ia_gt <- function(sclass, n = 10^5, log_risk = FALSE) {
   
   se_meas <- c("ctfse", "TE x SE", "DE x SE", "IE x SE", "DE x IE x SE")
   ie_meas <- c("ctfie", "DE x IE", "IE x SE", "DE x IE x SE")
-  measures <- measure_spec()
+  measures <- intertest:::measure_spec()
   
   res <- NULL
   for (i in seq_along(measures)) {

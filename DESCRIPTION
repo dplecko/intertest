@@ -1,0 +1,21 @@
+Package: intertest
+Title: Interaction Effect Testing via One-Step Debiased Estimation
+Version: 0.0.1
+Authors@R: person("Drago", "Plecko", email = "www.plecko@gmail.com",
+    role = c("aut", "cre"))
+Description: Provides semiparametrically efficient estimators for interaction
+    effects in causal graphs with a binary exposure X and outcome Y, mediated
+    through pre-exposure confounders Z and mediators W. Supports difference,
+    log-risk, and log-odds scales with cross-fitted nuisance estimation via
+    gradient boosting.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    xgboost,
+    ggplot2,
+    stats
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
