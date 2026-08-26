@@ -38,6 +38,7 @@ pso <- function(cfit, data, X, Z, W, Y, scale = c("diff", "logr", "logo"), ...) 
       mu_hat <- y_xzw[[xy+1]]
       phi[[xz+1]][[xw+1]][[xy+1]] <-
         (x == xy) / mean(x == xw) *
+        px_zw[[xw+1]] / px_zw[[xy+1]] *
         dlink(mu_hat) * (y - mu_hat) +
         (x == xw) / mean(x == xw) * link(mu_hat)
     }
@@ -48,6 +49,7 @@ pso <- function(cfit, data, X, Z, W, Y, scale = c("diff", "logr", "logo"), ...) 
       mu_hat <- y_xzw[[xy+1]]
       phi[[xz+1]][[xw+1]][[xy+1]] <-
         (x == xy) / mean(x == xz) *
+        px_z[[xz+1]] / px_z[[xy+1]] *
         dlink(mu_hat) * (y - mu_hat) +
         (x == xz) / mean(x == xz) * link(mu_hat)
     }
